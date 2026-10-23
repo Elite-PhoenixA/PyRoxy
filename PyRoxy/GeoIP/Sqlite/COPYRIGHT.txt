@@ -1,0 +1,5 @@
+<<<<<<< HEAD
+Database and Contents Copyright (c) 2026 MaxMind, Inc.
+=======
+Database and Contents Copyright (c) 2022 MaxMind, Inc.
+>>>>>>> ea0f88dbc0573292ba5672124f69e4e7a31b544d

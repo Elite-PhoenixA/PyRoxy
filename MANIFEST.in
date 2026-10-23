@@ -1,0 +1,11 @@
+include LICENSE.md
+<<<<<<< HEAD
+include README.md
+include requirements.txt
+recursive-include PyRoxy/GeoIP *.mmdb *.txt
+recursive-include scripts *.py
+recursive-include tests *.py
+=======
+recursive-include PyRoxy.GeoIP GeoLite2-Country.mmdb
+recursive-include PyRoxy.GeoIP *.txt
+>>>>>>> ea0f88dbc0573292ba5672124f69e4e7a31b544d
