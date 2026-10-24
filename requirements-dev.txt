@@ -1,0 +1,4 @@
+-r requirements.txt
+coverage[toml]>=7.4
+build>=1.2
+twine>=5.0

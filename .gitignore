@@ -1,5 +1,4 @@
 /venv/
-<<<<<<< HEAD
 __pycache__/
 */__pycache__
 /.idea/
@@ -7,8 +6,8 @@ __pycache__/
 /dist/
 /*.egg-info/
 .pytest_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
 
-=======
-*/__pycache__
-/.idea/
->>>>>>> ea0f88dbc0573292ba5672124f69e4e7a31b544d

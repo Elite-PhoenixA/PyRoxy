@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import sys
 from pathlib import Path
 
@@ -13,11 +12,3 @@ if __name__ == "__main__":
     proxies = ProxyUtiles.readFromFile(path)
     print("Parsed proxies:", len(proxies))
     print("Working proxies:", len(ProxyChecker.checkAll(proxies)))
-=======
-from PyRoxy import ProxyUtiles, ProxyChecker
-
-if __name__ == '__main__':
-    ps = ProxyUtiles.readFromFile("test.txt")
-    pc = ProxyChecker.checkAll(ps)
-    print(pc)
->>>>>>> ea0f88dbc0573292ba5672124f69e4e7a31b544d

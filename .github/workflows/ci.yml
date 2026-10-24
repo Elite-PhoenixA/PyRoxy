@@ -1,0 +1,132 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tests:
+    name: Tests (${{ matrix.os }}, Python ${{ matrix.python }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python: "3.9"
+          - os: ubuntu-latest
+            python: "3.12"
+          - os: ubuntu-latest
+            python: "3.14"
+          - os: windows-latest
+            python: "3.12"
+          - os: macos-latest
+            python: "3.12"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt
+
+      - name: Run the test suite under coverage
+        run: python -m coverage run -m unittest discover -s tests -v
+
+      - name: Enforce the coverage threshold and summarise
+        shell: bash
+        run: |
+          set -o pipefail
+          python -m coverage report | tee -a "$GITHUB_STEP_SUMMARY"
+
+      - name: Write an XML coverage report
+        if: matrix.os == 'ubuntu-latest' && matrix.python == '3.14'
+        run: python -m coverage xml
+
+      - name: Upload the coverage report
+        if: matrix.os == 'ubuntu-latest' && matrix.python == '3.14'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-xml
+          path: coverage.xml
+          if-no-files-found: error
+
+  wheel:
+    name: Build, install and test the wheel
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Install build tooling
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt
+
+      - name: Build the sdist and wheel
+        run: python -m build
+
+      - name: Validate the distribution metadata
+        run: python -m twine check dist/*
+
+      - name: Verify the wheel ships the GeoIP database
+        run: |
+          python - <<'PY'
+          import glob
+          import sys
+          import zipfile
+
+          wheel = glob.glob("dist/*.whl")[0]
+          with zipfile.ZipFile(wheel) as archive:
+              names = set(archive.namelist())
+          required = {
+              "PyRoxy/GeoIP/Sqlite/GeoLite2-Country.mmdb",
+              "PyRoxy/GeoIP/Sqlite/COPYRIGHT.txt",
+              "PyRoxy/GeoIP/Sqlite/LICENSE.txt",
+          }
+          missing = sorted(required - names)
+          if missing:
+              sys.exit("%s is missing: %s" % (wheel, ", ".join(missing)))
+          print("%s contains %d entries" % (wheel, len(names)))
+          PY
+
+      - name: Install the wheel into a clean virtualenv
+        run: |
+          python -m venv "$RUNNER_TEMP/venv"
+          "$RUNNER_TEMP/venv/bin/python" -m pip install --upgrade pip
+          "$RUNNER_TEMP/venv/bin/python" -m pip install dist/*.whl
+
+      - name: Smoke-test the installed package outside the source tree
+        working-directory: ${{ runner.temp }}
+        run: |
+          "$RUNNER_TEMP/venv/bin/python" "$GITHUB_WORKSPACE/scripts/wheel_smoke.py"
+          "$RUNNER_TEMP/venv/bin/pyroxy-geoip" --help
+
+      - name: Run the test suite against the installed wheel
+        run: |
+          mkdir -p "$RUNNER_TEMP/wheel-tests"
+          cp -r tests "$RUNNER_TEMP/wheel-tests/tests"
+          cd "$RUNNER_TEMP/wheel-tests"
+          "$RUNNER_TEMP/venv/bin/python" -m unittest discover -s tests -t . -v
